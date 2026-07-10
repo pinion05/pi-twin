@@ -52,6 +52,25 @@ Obsidian 볼트의 `Pi Agent/` 폴더가 pi 에이전트의 **디지털 트윈**
 **임베드**: 인덱스 노트는 `![[index.base#전체 요약]]` / `![[Extensions.base#전체 요약]]` 형태.
 - 방향 A/B 공통: 정적 카운트·목록 발견 → 대응 base 뷰 임베드로 치환.
 
+**Bases 파일 스키마** (틀리면 Obsidian이 렌더링 실패 — **이 스키마 그대로 작성**):
+
+```yaml
+filters: file.hasTag("skill")     # 함수 표현식 문자열 하나. and:/or: 맵 ❌
+views:                             # 반드시 **배열** (- name: 항목). 객체(이름:) ❌
+  - name: 소스별 요약
+    type: table
+    groupBy:                       # 그룹화만 지원. order:/sort:/columnSize ❌
+      property: source
+      direction: asc
+  - name: 전체 요약
+    type: table
+```
+
+> **자주 틀리는 함정** (재현 시 이 3개가 계속 틀림):
+> - `filters: and: [...]` → `filters: file.hasTag("...")` 표현식으로
+> - `views: <이름>:` (객체) → `views:` 아래 `- name: <이름>` (배열)로 — 아니면 "뷰는 반드시 배열이어야 함" 에러
+> - `order:`/`sort:` → 미지원. 그룹화는 `groupBy: {property, direction}` 만
+
 **도구**: Obsidian 코어 Bases **단일**. Dataview/CustomJS 미사용 (③ 런타임 메타 자동화 필요 시 별도 검토).
 
 ### 스킬 노트 1:1 원문 미러 (불변)
@@ -60,7 +79,7 @@ Obsidian 볼트의 `Pi Agent/` 폴더가 pi 에이전트의 **디지털 트윈**
 - 볼트 **frontmatter**에 Bases 속성(`tags: skill` · `source` · `status` · `description_tokens`) 보존 + 원본 메타(`name` · `description`) 병합.
 - 원본의 상대 링크(`references/...`)는 볼트에서 **깨질 수 있음을 수용** (1:1은 파일 내용 기준).
 - **동기화**: 스킬 원본이 바뀌면 방향 B로 볼트 body 재복사 (frontmatter는 보존).
-- **검증 (재현성)**: frontmatter(첫 두 `---` 사이) 제거 후 body `sha256` 비교 — 원본과 볼트가 같은 해시면 1:1 (결정론적, 타 에이전트도 동일 결론).
+- **검증 (재현성, 결정론적)**: 파일을 `'---\n'` 로 split → `parts[2]` 가 body (frontmatter는 첫 `---\n`…둘째 `---\n` 사이; **body는 그 직후부터 파일 끝까지, trim/strip 없이**). 원본·볼트 body 의 `sha256` 이 같으면 1:1. **정규식 기반 추출 금지** — 개행 처리가 달라 해시가 틀림. split 기반 고정.
 
 ## 방향 A — Obsidian → pi  *(사용자: "… pi에 반영해")*
 
@@ -84,7 +103,7 @@ Obsidian 볼트의 `Pi Agent/` 폴더가 pi 에이전트의 **디지털 트윈**
 ## 🔒 보안 규칙 (불변)
 
 > **키/민감정보는 트윈에서 영구 제외.** 다음은 절대 볼트에 복사하거나 git 커밋하지 않는다:
-> - `~/.pi/agent/auth.json` — API 키 (각 LLM provider)
+> - `~/.pi/agent/auth.json` — API 키 (zai, openrouter, nvidia, xiaomi 등)
 > - `~/.pi/agent/telegram.json` — 봇 토큰
 > - `~/.pi/agent/locks.json`
 > - `models.json` / `settings.json` 내 `apiKey`, `$ENV_*` 값 → 스냅샷 시 `***` 마스킹
